@@ -8,25 +8,27 @@ from datetime import datetime
 
 # Parameters 
 x1 = x2 = 1.0   # Size of plate
-N1 = N2 = 100  # Grid points used
+N1 = N2 = 200  # Grid points used
 h = x1 / N1     # Grid size (Size x1=x2, only need to cal once)
 v_top, v_bottom, v_left, v_right = 100, 0, 20, 80 # Boundary conditions
-eps = 1e-4      # Uniform convergence 
-cycle_limit = 15000 # Cycle limit
+eps = 1e-10      # Uniform convergence 
+cycle_limit = 150000 # Cycle limit
 charge_on = False # Add charge to simulation
 
 V_n = np.zeros(shape=(N1+2, N2+2)) # Current V[x][y] (The +2 defined the boundary)
 V_p = np.zeros(shape=(N1+2,N2+2))  # Previous V[x][y] for convergence
 rho = np.zeros(shape=(N1,N2))    # rho[x][y] (Since diff dim from V need to -1 in index)
 
+coord_x = lambda x: (x/(N1+1))*x1
+coord_y = lambda y: (y/(N2+1))*x2
 
 # Initialize boundary conditions
 for x in range(0,N1+2):          # Top and bottom boundaries
-    V_n[x][0]    = v_bottom
-    V_n[x][N2+1] = v_top
+    V_n[x][0]    =  2*coord_x(x)*(1-coord_x(x)) #v_bottom
+    V_n[x][N2+1] = np.sin(2*np.pi*coord_x(x)) #v_top
 for y in range(0,N2+2):          # Left and right boundaries
-    V_n[0][y]    = v_left
-    V_n[N1+1][y] = v_right
+    V_n[0][y]    = 0 #v_left
+    V_n[N1+1][y] = 0 #v_right
 
 if charge_on: # If add charge
     # Point charge 
@@ -46,16 +48,16 @@ np.copyto(V_p,V_n) # Make sure V_p also have those BCs
 cycle = 0
 while cycle < cycle_limit:
 
-    # Iteration
-    for x in range(1,N1+1):
-        for y in range(1,N2+1):
-            V_n[x][y] = 0.25*(V_p[x+1][y]+V_p[x-1][y]+V_p[x][y+1]+V_p[x][y-1] + h*h*rho[x-1][y-1])
-
+    # Optimized iteration
+    V_n[1:-1,1:-1] = 0.25*(V_p[1:-1,:-2] + V_p[1:-1,2:] + V_p[:-2,1:-1] + V_p[2:,1:-1]) + h*h*rho
+    #print(V_n.shape,rho.shape)
+    
     # Convergence
-    max_eps = np.amax(np.abs(V_n-V_p)) # Find max{|V_n+1 - V_n|} for uniform convergence
+    max_eps = np.amax(((V_n-V_p)/(V_n+1e-10))**2) # Find max{|V_n+1 - V_n|} for uniform convergence
     if max_eps < eps:
         break
     
+    #V_p[:] = V_n
     np.copyto(V_p,V_n)
     
     if (cycle + 1) % 100 == 0:
@@ -63,6 +65,7 @@ while cycle < cycle_limit:
     cycle += 1 # Increment cycle count
 
 print(f'Simulation complete (Cycle: {cycle})')
+print(f'Relative Error: {max_eps}')
 
 
 # Plotting
@@ -70,7 +73,7 @@ fig = plt.figure()
 plot = fig.add_subplot(111,projection='3d')
 
 X,Y = np.meshgrid(np.linspace(0,x1,N1+2),np.linspace(0,x2,N2+2))
-plot.plot_surface(X,Y,V_n,cmap=cm.RdBu,antialiased=True)
+plot.plot_surface(X,Y,V_n,cmap=cm.plasma,antialiased=True)
 
 plt.show()
 
