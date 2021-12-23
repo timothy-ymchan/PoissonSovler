@@ -49,7 +49,7 @@ cycle = 0
 while cycle < cycle_limit:
 
     # Optimized iteration
-    V_n[1:-1,1:-1] = 0.25*(V_p[1:-1,:-2] + V_p[1:-1,2:] + V_p[:-2,1:-1] + V_p[2:,1:-1]) + h*h*rho
+    V_n[1:-1,1:-1] = 0.25*(V_p[1:-1,:-2] + V_p[1:-1,2:] + V_p[:-2,1:-1] + V_p[2:,1:-1]) -0.25*h*h*rho
     #print(V_n.shape,rho.shape)
     
     # Convergence
